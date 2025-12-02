@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>趣味汉语 - 点词成句</title>
+    <style>
+        :root {
+            --primary-pink: #ffcdd2; /* 浅粉背景 */
+            --dark-pink: #ef9a9a;    /* 深粉边框 */
+            --text-color: #4e342e;   /* 深褐色字体 */
+            --bg-blue: #e3f2fd;      /* 浅蓝背景 */
+            --btn-shadow: 0 4px 0 #e57373; /* 按钮立体阴影 */
+        }
+
+        body {
+            font-family: "Rounded Mplus 1c", "Microsoft YaHei", "Heiti SC", sans-serif;
+            background-color: var(--bg-blue);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none; /* 防止选中文本 */
+        }
+
+        /* 顶部标题区 */
+        header {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            background-color: var(--primary-pink);
+            color: var(--text-color);
+            padding: 10px 30px;
+            border-radius: 20px;
+            border: 2px dashed #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            font-size: 24px;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            width: 80%;
+            height: 10px;
+            background-color: #fff;
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #81c784;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* 游戏主区域 */
+        .game-area {
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        /* 1. 目标区域 (句子框) */
+        .target-box {
+            background-color: rgba(255, 255, 255, 0.6);
+            border: 3px dashed var(--dark-pink);
+            border-radius: 20px;
+            min-height: 150px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            gap: 10px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .placeholder-text {
+            position: absolute;
+            color: #b0bec5;
+            font-size: 18px;
+            pointer-events: none;
+        }
+
+        /* 2. 词汇源区域 */
+        .source-box {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            min-height: 100px;
+            padding: 10px;
+        }
+
+        /* 词汇按钮样式 */
+        .word-btn {
+            background-color: var(--primary-pink);
+            color: var(--text-color);
+            font-size: 24px; /* 大字号 */
+            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 15px;
+            border: 2px dashed #fff;
+            cursor: pointer;
+            box-shadow: var(--btn-shadow);
+            transition: transform 0.1s, box-shadow 0.1s;
+            position: relative;
+            top: 0;
+        }
+
+        .word-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 transparent;
+        }
+
+        /* 检查按钮 */
+        .check-btn {
+            background-color: #81c784; /* 绿色 */
+            color: white;
+            font-size: 22px;
+            padding: 15px;
+            border: none;
+            border-radius: 50px;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #4caf50;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        
+        .check-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 transparent;
+        }
+
+        .check-btn.disabled {
+            background-color: #cfd8dc;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* 动画效果 */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+
+        .shake {
+            animation: shake 0.4s ease-in-out;
+            border-color: #ff5252;
+        }
+
+        /* 成功提示 */
+        .feedback {
+            height: 30px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .success-text { color: #4caf50; }
+        .error-text { color: #ff5252; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>点词成句</h1>
+</header>
+
+<div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<div class="game-area">
+    
+    <div class="target-box" id="targetBox">
+        <span class="placeholder-text">点击下方的词组成句子</span>
+    </div>
+
+    <div class="source-box" id="sourceBox">
+        </div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <button class="check-btn" id="checkBtn" onclick="checkAnswer()">检查句子</button>
+</div>
+
+<script>
+    // ----------------配置区域 (您可以修改这里的题目)----------------
+    const levels = [
+        {
+            words: ["妈妈", "在", "厨房", "做饭"],
+            correct: "妈妈在厨房做饭"
+        },
+        {
+            words: ["今天", "天气", "非常", "好"],
+            correct: "今天天气非常好"
+        },
+        {
+            words: ["我", "想", "去", "中国", "旅游"],
+            correct: "我想去中国旅游"
+        },
+        {
+            words: ["这", "是", "什么", "水果"],
+            correct: "这是什么水果"
+        }
+    ];
+
+    // ----------------游戏逻辑----------------
+    let currentLevel = 0;
+    let selectedWords = []; // 玩家当前选中的词
+    
+    const targetBox = document.getElementById('targetBox');
+    const sourceBox = document.getElementById('sourceBox');
+    const feedback = document.getElementById('feedback');
+    const checkBtn = document.getElementById('checkBtn');
+    const progressBar = document.getElementById('progressBar');
+
+    // 初始化游戏
+    function initGame() {
+        if (currentLevel >= levels.length) {
+            gameComplete();
+            return;
+        }
+
+        selectedWords = [];
+        feedback.textContent = "";
+        feedback.className = "feedback";
+        targetBox.classList.remove("shake");
+        
+        // 更新进度条
+        progressBar.style.width = `${(currentLevel / levels.length) * 100}%`;
+        checkBtn.textContent = "检查句子";
+        checkBtn.onclick = checkAnswer;
+        checkBtn.style.backgroundColor = "#81c784";
+        checkBtn.style.boxShadow = "0 4px 0 #4caf50";
+
+        // 获取当前题目的词汇并打乱
+        const levelData = levels[currentLevel];
+        // 复制一份数组用于打乱，不影响原数据
+        let shuffledWords = [...levelData.words].sort(() => Math.random() - 0.5);
+
+        renderUI(shuffledWords);
+    }
+
+    // 渲染界面
+    function renderUI(sourceWords) {
+        // 清空容器
+        targetBox.innerHTML = '';
+        sourceBox.innerHTML = '';
+
+        // 显示占位符
+        if (selectedWords.length === 0) {
+            targetBox.innerHTML = '<span class="placeholder-text">点击词语组成句子</span>';
+        }
+
+        // 渲染已选中的词 (上方)
+        selectedWords.forEach((word, index) => {
+            const btn = createWordBtn(word);
+            btn.onclick = () => removeWord(index); // 点击上方词，移除
+            targetBox.appendChild(btn);
+        });
+
+        // 渲染待选词 (下方) - 过滤掉已选的
+        // 这里的逻辑稍微复杂：我们需要追踪哪些词在下面。
+        // 为了简单，我们每次根据“剩余词”重新渲染下方。
+        // 但为了更好的体验，通常不仅是过滤，而是状态变化。
+        // 这里采用简单模式：下方只显示未被选中的词。
+        
+        // 重新计算下方显示的词：这里为了逻辑简单，我们不严格追踪原始乱序的位置，
+        // 而是将未选中的词显示在下方。
+        // *注意：这会导致每次点击下方词会重新排序，为了体验更好，
+        // 我们可以只隐藏下方按钮，而不是移除。但为了代码简短，先用移除法。
+        
+        // 改进：为了不让下方乱跳，我们需要在init时固定下方按钮，只是切换显示/隐藏。
+        // 但在这个轻量版中，我们采用：
+        // 下方区域重新渲染 原始乱序数组 中 未被使用的 实例。
+        
+        // 由于为了简单，我修改逻辑：
+        // 每次点击，只移动DOM元素，不完全重绘。
+    }
+
+    // ---------------- DOM 操作逻辑 ----------------
+    
+    // 页面加载时生成当前关卡的DOM
+    function loadLevelDOM() {
+         if (currentLevel >= levels.length) {
+            gameComplete();
+            return;
+        }
+
+        targetBox.innerHTML = '<span class="placeholder-text">点击词语组成句子</span>';
+        sourceBox.innerHTML = '';
+        feedback.textContent = '';
+        checkBtn.textContent = "检查句子";
+        checkBtn.onclick = checkAnswer;
+
+        // 更新进度条
+        progressBar.style.width = `${(currentLevel / levels.length) * 100}%`;
+
+        let words = [...levels[currentLevel].words];
+        // 打乱
+        words.sort(() => Math.random() - 0.5);
+
+        words.forEach((word, id) => {
+            let btn = createWordBtn(word);
+            // 给每个按钮绑定点击事件
+            btn.onclick = function() {
+                moveWord(this);
+            };
+            sourceBox.appendChild(btn);
+        });
+    }
+
+    function createWordBtn(text) {
+        let btn = document.createElement('div');
+        btn.className = 'word-btn';
+        btn.innerText = text;
+        return btn;
+    }
+
+    // 核心移动逻辑
+    function moveWord(element) {
+        // 播放轻微点击音效
+        playTone(400, "sine", 0.1);
+
+        if (element.parentElement === sourceBox) {
+            // 从下方移到上方
+            // 移除占位符
+            const placeholder = targetBox.querySelector('.placeholder-text');
+            if (placeholder) placeholder.style.display = 'none';
+            targetBox.appendChild(element);
+        } else {
+            // 从上方移回下方
+            sourceBox.appendChild(element);
+            // 如果上方空了，显示占位符
+            if (targetBox.querySelectorAll('.word-btn').length === 0) {
+                const placeholder = targetBox.querySelector('.placeholder-text');
+                if (placeholder) placeholder.style.display = 'block';
+            }
+        }
+    }
+
+    // 检查答案
+    function checkAnswer() {
+        // 获取上方所有的词
+        const currentWords = Array.from(targetBox.querySelectorAll('.word-btn')).map(btn => btn.innerText);
+        const userSentence = currentWords.join('');
+        const correctSentence = levels[currentLevel].correct;
+
+        if (userSentence === correctSentence) {
+            // 答对了
+            handleSuccess();
+        } else {
+            // 答错了
+            handleError();
+        }
+    }
+
+    function handleSuccess() {
+        feedback.textContent = "太棒了！ Perfect!";
+        feedback.className = "feedback success-text";
+        playTone(600, "triangle", 0.1); // 成功音效
+        playTone(800, "triangle", 0.1, 100); 
+        
+        // 撒花特效
+        confettiEffect();
+
+        // 按钮变为“下一题”
+        checkBtn.textContent = "下一题 ->";
+        checkBtn.style.backgroundColor = "#29b6f6";
+        checkBtn.style.boxShadow = "0 4px 0 #0288d1";
+        checkBtn.onclick = () => {
+            currentLevel++;
+            loadLevelDOM();
+        };
+    }
+
+    function handleError() {
+        feedback.textContent = "不对哦，再试一次。 Try again.";
+        feedback.className = "feedback error-text";
+        targetBox.classList.add('shake');
+        playTone(200, "sawtooth", 0.3); // 失败音效
+        
+        setTimeout(() => {
+            targetBox.classList.remove('shake');
+        }, 500);
+    }
+
+    function gameComplete() {
+        targetBox.innerHTML = "🎉";
+        sourceBox.innerHTML = "<h2>恭喜！你完成了所有练习！</h2>";
+        checkBtn.style.display = "none";
+        progressBar.style.width = "100%";
+        feedback.textContent = "";
+    }
+
+    // ---------------- 简易音效合成器 (无需外部文件) ----------------
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playTone(freq, type, duration, delay = 0) {
+        setTimeout(() => {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = type;
+            oscillator.frequency.value = freq;
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            
+            // 音量淡出
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+
+            oscillator.stop(audioCtx.currentTime + duration);
+        }, delay);
+    }
+
+    // ---------------- 简易撒花特效 ----------------
+    function confettiEffect() {
+        const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+        
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.style.position = 'fixed';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.top = '-10px';
+            confetti.style.width = '10px';
+            confetti.style.height = '10px';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.zIndex = '9999';
+            confetti.style.transition = 'top 1s ease-out, transform 1s linear';
+            
+            document.body.appendChild(confetti);
+
+            setTimeout(() => {
+                confetti.style.top = '110vh';
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+            }, 10);
+
+            setTimeout(() => {
+                confetti.remove();
+            }, 1000);
+        }
+    }
+
+    // 启动游戏
+    loadLevelDOM();
+
+</script>
+
+</body>
+</html>
